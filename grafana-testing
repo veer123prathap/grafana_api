@@ -1,0 +1,70 @@
+import requests
+import json
+
+def check_grafana_status(grafana_url):
+  response = requests.get(f"{grafana_url}/api/health")
+  if response.status_code == 200 and response.json().get("database") == "ok":
+    return True
+  else:
+    return False
+
+def get_cyberark_credentials(cyberark_url, username, password):
+  # Implement the logic to retrieve the credentials from Cyber Ark here
+  # For example, you can use requests to interact with the Cyber Ark API
+  # and return the credentials as needed
+  credentials = {"username": "your_cyberark_username", "password": "your_cyberark_password"}
+  return credentials
+
+def create_or_update_datasource(grafana_url, api_key, datasource_name, datasource_info):
+  headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+  if does_datasource_exist(grafana_url, api_key, datasource_name):
+    # Update existing data source
+    datasource_id = get_datasource_id(grafana_url, api_key, datasource_name)
+    response = requests.put(f"{grafana_url}/api/datasources/{datasource_id}", headers=headers, data=json.dumps(datasource_info))
+    return response.status_code == 200
+  else:
+    # Create new data source
+    response = requests.post(f"{grafana_url}/api/datasources", headers=headers, data=json.dumps(datasource_info))
+    return response.status_code == 200
+
+def does_datasource_exist(grafana_url, api_key, datasource_name):
+  headers = {"Authorization": f"Bearer {api_key}"}
+  response = requests.get(f"{grafana_url}/api/datasources/name/{datasource_name}", headers=headers)
+  return response.status_code == 200 and "id" in response.json()
+
+def get_datasource_id(grafana_url, api_key, datasource_name):
+  headers = {"Authorization": f"Bearer {api_key}"}
+  response = requests.get(f"{grafana_url}/api/datasources/name/{datasource_name}", headers=headers)
+  if response.status_code == 200 and "id" in response.json():
+    return response.json()["id"]
+  return None
+
+def main():
+  grafana_url = "http://your_grafana_url"
+  cyberark_url = "http://your_cyberark_url"
+  grafana_api_key = "your_grafana_api_key"
+  datasource_name = "your_datasource_name"
+
+  if check_grafana_status(grafana_url):
+    cyberark_credentials = get_cyberark_credentials(cyberark_url, "your_cyberark_username", "your_cyberark_password")
+    datasource_info = {
+        "name": datasource_name,
+        "type": "your_datasource_type",
+        "url": "your_datasource_url",
+        "access": "proxy",
+        # Add other required fields for your specific data source configuration
+        # Example: "database": "your_database_name", "user": "your_database_user", ...
+        "jsonData": {
+            "username": cyberark_credentials["username"],
+            "password": cyberark_credentials["password"]
+        }
+    }
+    if create_or_update_datasource(grafana_url, grafana_api_key, datasource_name, datasource_info):
+      print("Data source created/updated successfully.")
+    else:
+      print("Error creating/updating data source.")
+  else:
+    print("Grafana is not ready.")
+
+if __name__ == "__main__":
+  main()
